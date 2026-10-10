@@ -689,11 +689,6 @@ $('#btn-save-one').addEventListener('click', () => {
 
 /* ═════════ 5 打卡卡：蓝天操场挂画 ═════════ */
 let cardBlob = null;
-const SEED = { // 固定种子，不是每次随机：每行的中心 x / 垂直微调 / 旋转角（-6°～6°）
-  rows: [{ ry: 345, idx: [0, 1, 2], xs: [190, 540, 890], dy: [0, 20, -6], rot: [-4.5, 3, -2.2] },
-         { ry: 835, idx: [3, 4], xs: [330, 770], dy: [8, -10], rot: [3.6, -4.2] },
-         { ry: 1325, idx: [5, 6], xs: [250, 650], dy: [-4, 14], rot: [-2.8, 5.2] }],
-};
 function drawBackdrop(ctx, W, H) {
   const bg = ART['card-bg'];
   if (bg) {
@@ -714,25 +709,6 @@ function drawBackdrop(ctx, W, H) {
     ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
   }
 }
-function ropeY(ry, x, W) { const t = x / W; return ry + 96 * t * (1 - t); }
-function drawRope(ctx, ry, W) {
-  ctx.save(); ctx.lineCap = 'round';
-  ctx.strokeStyle = '#9CC0E6'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-10, ry); ctx.quadraticCurveTo(W / 2, ry + 48, W + 10, ry); ctx.stroke();
-  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 5; ctx.setLineDash([14, 9]); ctx.beginPath(); ctx.moveTo(-10, ry - 1); ctx.quadraticCurveTo(W / 2, ry + 47, W + 10, ry - 1); ctx.stroke();
-  ctx.restore();
-}
-function drawClip(ctx) { // 木夹子（原点＝夹住相片上缘中心）
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3;
-  ctx.fillStyle = '#B98A55'; roundRect(ctx, -13, -30, 26, 64, 7); ctx.fill(); ctx.shadowColor = 'transparent';
-  ctx.fillStyle = '#8A6238'; ctx.fillRect(-13, -2, 26, 5); ctx.fillStyle = '#D6AE79'; ctx.fillRect(-9, -26, 5, 24);
-  ctx.restore();
-}
-function cloudLabel(ctx, cx, cy, w, h, fill) { // 圆角名牌
-  ctx.save(); ctx.translate(cx, cy); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
-  ctx.fillStyle = fill; roundRect(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill();
-  ctx.shadowColor = 'transparent'; ctx.strokeStyle = 'rgba(247,251,255,.35)'; ctx.lineWidth = 3; roundRect(ctx, -w / 2 + 6, -h / 2 + 6, w - 12, h - 12, h / 2 - 6); ctx.stroke();
-  ctx.restore();
-}
 function drawSun(ctx, cx, cy, r) {
   ctx.save(); ctx.translate(cx, cy);
   ctx.strokeStyle = C.sun; ctx.lineWidth = r * .14; ctx.lineCap = 'round';
@@ -750,8 +726,7 @@ async function buildCard() {
   drawBackdrop(ctx, W, H);
   const doneN = Object.keys(S.photos).length;
 
-  // 标题牌：两条细绳吊着
-  ctx.strokeStyle = '#F7FBFF'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(210, -10); ctx.lineTo(236, 78); ctx.moveTo(870, -10); ctx.lineTo(846, 78); ctx.stroke();
+  // 标题牌
   ctx.save(); ctx.translate(540, 190); ctx.rotate(-0.012);
   ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12;
   const wood = ctx.createLinearGradient(0, -125, 0, 125); wood.addColorStop(0, '#2F7FD1'); wood.addColorStop(1, '#1B64B5');
@@ -771,40 +746,46 @@ async function buildCard() {
   ctx.font = `800 54px ${F_SANS}`; ctx.fillText(`${doneN}/${MOVES.length}`, 0, 22);
   ctx.restore();
 
-  for (const row of SEED.rows) drawRope(ctx, row.ry, W);
-  for (const row of SEED.rows) {
-    for (let k = 0; k < row.idx.length; k++) {
-      const a = MOVES[row.idx[k]], p = S.photos[a.id];
-      const cx = row.xs[k], topY = ropeY(row.ry, cx, W) + 4 + row.dy[k], rot = row.rot[k] * Math.PI / 180;
-      const PW = 270, PH = 360, BX = 14, BT = 14, BB = 56, OW = PW + 2 * BX, OH = PH + BT + BB;
-      ctx.save(); ctx.translate(cx, topY); ctx.rotate(rot);
-      // 拍立得白边
-      ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 22; ctx.shadowOffsetX = 6; ctx.shadowOffsetY = 12;
-      ctx.globalAlpha = p ? 1 : 0.55; ctx.fillStyle = '#FBFAF3'; roundRect(ctx, -OW / 2, 0, OW, OH, 4); ctx.fill(); ctx.shadowColor = 'transparent';
-      const px = -PW / 2, py = BT;
-      if (p) {
-        const img = await loadImg(p.url);
-        ctx.drawImage(img, px, py, PW, PH);
-        // 贴纸：动作小图
-        ctx.save(); ctx.translate(OW / 2 - 34, 62); ctx.rotate(0.18); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
-        ctx.fillStyle = '#FBFAF3'; ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent'; drawArt(ctx, a.id, -50, -50, 100, 100); ctx.restore();
-        // 完成章
-        ctx.save(); ctx.translate(-OW / 2 + 40, 52); ctx.rotate(-0.2); ctx.fillStyle = C.track; ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI * 2); ctx.fill(); drawCheck(ctx, 0, 0, 40, C.cloud); ctx.restore();
-      } else {
-        ctx.fillStyle = 'rgba(18,62,115,.5)'; ctx.fillRect(px, py, PW, PH);
-        const g = grayArt(a.id); ctx.globalAlpha = .42; if (g) ctx.drawImage(g, px + 25, py + 52, PW - 50, PW - 50); else drawArt(ctx, a.id, px + 25, py + 52, PW - 50, PW - 50);
-        ctx.globalAlpha = 1; ctx.fillStyle = C.cloud; ctx.font = `700 44px ${F_KAI}`; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 6; ctx.fillText('未完成', 0, py + PH - 46); ctx.shadowColor = 'transparent';
-      }
-      ctx.globalAlpha = 1;
-      // 名牌
-      cloudLabel(ctx, 0, OH - 4, 300, 78, p ? (row.idx[k] % 2 ? C.blue : '#2F7FD1') : '#5C7592');
-      ctx.fillStyle = C.cloud; ctx.font = `700 32px ${F_KAI}`; fitText(ctx, a.zh, 0, OH - 18, 230);
-      ctx.fillStyle = '#FFE9A8'; ctx.font = `italic 500 20px ${F_MS}`; fitText(ctx, a.ms, 0, OH + 14, 240);
-      drawClip(ctx);
-      ctx.restore();
+  // 跑道关卡图：7 个相框蛇形排列（1→2→3，4←5←6 倒着走，7 在左下），一条虚线跑道依序穿过，终点是旗子和太阳
+  const FW = 276, PW = 252, PH = 336, FH = 12 + PH + 64, XS = [180, 540, 900], YS = [360, 812, 1264], WAVE = [0, 60, 0];
+  const SLOTS = [[0, 0], [0, 1], [0, 2], [1, 2], [1, 1], [1, 0], [2, 0]]; // 第 i 个动作的 [行, 列]
+  const pos = SLOTS.map(([r, c]) => ({ x: XS[c], y: YS[r] + WAVE[c] }));
+  const track = [...pos.map((q) => ({ x: q.x, y: q.y + FH / 2 })), { x: 900, y: 1490 }];
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const path = () => { ctx.beginPath(); ctx.moveTo(track[0].x, track[0].y); for (let i = 1; i < track.length; i++) { const a = track[i - 1], b = track[i], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; ctx.quadraticCurveTo(a.x, my, mx, my); ctx.quadraticCurveTo(b.x, my, b.x, b.y); } };
+  path(); ctx.strokeStyle = 'rgba(228,87,46,.88)'; ctx.lineWidth = 62; ctx.stroke();        // 跑道
+  path(); ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 7; ctx.setLineDash([26, 22]); ctx.stroke(); // 分道线
+  ctx.restore();
+  for (let k = 0; k < MOVES.length; k++) {
+    const a = MOVES[k], p = S.photos[a.id], { x: cx, y: top } = pos[k];
+    ctx.save(); ctx.translate(cx, top);
+    ctx.shadowColor = 'rgba(8,28,60,.45)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12;
+    ctx.fillStyle = '#FBFDFF'; roundRect(ctx, -FW / 2, 0, FW, FH, 30); ctx.fill(); ctx.shadowColor = 'transparent';
+    const px = -PW / 2, py = 12;
+    ctx.save(); roundRect(ctx, px, py, PW, PH, 20); ctx.clip();
+    if (p) { ctx.drawImage(await loadImg(p.url), px, py, PW, PH); }
+    else {
+      ctx.fillStyle = '#C9DCEE'; ctx.fillRect(px, py, PW, PH);
+      const g = grayArt(a.id); ctx.globalAlpha = .5; if (g) ctx.drawImage(g, px + 20, py + 60, PW - 40, PW - 40); else drawArt(ctx, a.id, px + 20, py + 60, PW - 40, PW - 40);
+      ctx.globalAlpha = 1; ctx.fillStyle = '#44607E'; ctx.font = `700 40px ${F_KAI}`; ctx.fillText('未完成', 0, py + PH - 40);
     }
+    ctx.restore();
+    ctx.fillStyle = C.ink; ctx.font = `700 34px ${F_KAI}`; fitText(ctx, a.zh, 0, 12 + PH + 24, FW - 30);
+    ctx.fillStyle = '#44607E'; ctx.font = `italic 500 20px ${F_MS}`; fitText(ctx, a.ms, 0, 12 + PH + 52, FW - 30);
+    // 关卡号（左上）与完成章（右上）
+    ctx.shadowColor = 'rgba(8,28,60,.4)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+    ctx.fillStyle = C.blue; ctx.beginPath(); ctx.arc(-FW / 2 + 6, 6, 34, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = C.cloud; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = C.cloud; ctx.font = `800 40px ${F_SANS}`; ctx.fillText(String(k + 1), -FW / 2 + 6, 8);
+    if (p) { ctx.fillStyle = C.track; ctx.beginPath(); ctx.arc(FW / 2 - 6, 6, 34, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = C.cloud; ctx.lineWidth = 5; ctx.stroke(); drawCheck(ctx, FW / 2 - 6, 6, 42, C.cloud); }
+    ctx.restore();
   }
-  drawSun(ctx, 930, 1625, 58);
+  // 终点：旗杆＋格子旗
+  ctx.save(); ctx.translate(900, 1490);
+  ctx.strokeStyle = '#F7FBFF'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-70, 40); ctx.lineTo(-70, -150); ctx.stroke();
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) { ctx.fillStyle = (r + c) % 2 ? '#14304D' : '#F7FBFF'; ctx.fillRect(-64 + c * 22, -150 + r * 22, 22, 22); }
+  ctx.fillStyle = C.cloud; ctx.font = `700 40px ${F_KAI}`; ctx.shadowColor = 'rgba(8,28,60,.7)'; ctx.shadowBlur = 8; ctx.textAlign = 'left'; ctx.fillText('终点', -70, 78); ctx.restore(); ctx.textAlign = 'center';
+  drawSun(ctx, 930, 1700, 52);
   // 底部小字页脚
   ctx.font = `600 24px ${F_SANS}`; const ft = 'Pendidikan Jasmani Tahun 2', fw = ctx.measureText(ft).width + 44;
   ctx.fillStyle = 'rgba(8,28,60,.6)'; roundRect(ctx, 540 - fw / 2, 1860, fw, 40, 20); ctx.fill();
