@@ -1,0 +1,5 @@
+img-src/
+*.py
+test-poses.mjs
+handoff.md
+audio/lines.json
